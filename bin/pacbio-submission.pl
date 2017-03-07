@@ -6,6 +6,7 @@ use warnings;
 use File::Basename;
 use File::Path;
 use File::Spec;
+use List::Util;
 use YAML;
 
 use GSCApp;
@@ -38,9 +39,11 @@ File::Path::make_path($params{output_path}) if not -d $params{output_path};
 die sprintf('Output path does not exist! %s', $params{output_path}) if not -d $params{output_path};
 
 print STDERR "Linking files...\n";
+my @files;
 for my $pacbio_run ( @pacbio_runs ) {
     for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
         die "File does not exist! $file" if not -s $file;
+        push @files, $file;
         my $link = File::Spec->join($params{output_path}, File::Basename::basename($file));
         symlink($file, $link)
             or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
@@ -48,6 +51,8 @@ for my $pacbio_run ( @pacbio_runs ) {
     }
 }
 print STDERR "Linking files...done\n";
+my $max = List::Util::max( map { -s $_ } @files);
+printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
 print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
