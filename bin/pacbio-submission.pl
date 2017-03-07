@@ -15,9 +15,22 @@ my @param_names = (qw/ biosample bioproject output_path sample_id submission_ali
 my @plate_barcodes;
 my $skip_md5;
 App::Getopt->command_line_options(
-    (map { my $n = $_; $n =~ s/_/-/g; sprintf('%s=s', $n) => \$params{$_} } @param_names),
-	"plate-barcodes=s" => \@plate_barcodes,
-    "skip-md5" => \$skip_md5,
+    (map {
+        my $n = $_;
+        $n =~ s/_/-/g;
+        sprintf('%s=s', $n) => {
+            action => \$params{$_},
+            message => "The $_ for submssion",
+        },
+    } @param_names),
+	"plate-barcodes=s" => {
+        action => \@plate_barcodes,
+        message => 'Plate barcodes from LIMS',
+    },
+    "skip-md5" => {
+        action => \$skip_md5,
+        message => 'Skip creating the MD5s',
+    },
 );
 App->init;
 
