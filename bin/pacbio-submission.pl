@@ -13,9 +13,11 @@ use GSCApp;
 my %params;
 my @param_names = (qw/ biosample bioproject output_path sample_id submission_alias /);
 my @plate_barcodes;
+my $skip_md5;
 App::Getopt->command_line_options(
     (map { my $n = $_; $n =~ s/_/-/g; sprintf('%s=s', $n) => \$params{$_} } @param_names),
 	"plate-barcodes=s" => \@plate_barcodes,
+    "skip-md5" => \$skip_md5,
 );
 App->init;
 
@@ -47,7 +49,7 @@ for my $pacbio_run ( @pacbio_runs ) {
         my $link = File::Spec->join($params{output_path}, File::Basename::basename($file));
         symlink($file, $link)
             or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
-        #FIXME MD5
+        #FIXME MD5 if not $skip_md5
     }
 }
 print STDERR "Linking files...done\n";
