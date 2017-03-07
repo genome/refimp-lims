@@ -3,6 +3,7 @@
 use strict;
 use warnings;
 
+use Digest::MD5;
 use File::Basename;
 use File::Path;
 use File::Spec;
@@ -65,12 +66,27 @@ my $max = List::Util::max( map { -s $_ } @files);
 printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
 print STDERR "Linking files...\n";
-for ( @files ) {
+for my $file ( @files ) {
     my $link = File::Spec->join($params{output_path}, File::Basename::basename($file));
     symlink($file, $link)
         or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
 }
 print STDERR "Linking files...done\n";
+
+print STDERR "Generating MD5s...\n";
+my $digester = Digest::MD5->new;
+for my $file ( @files ) {
+    my $fh = IO::File->new($file)
+        or die "Failed to open $file => $!";
+    $fh->binmode;
+    $digester->addfile($fh);
+    my $md5_file = File::Spec->join($params{output_path}, File::Basename::basename($file).'.md5');
+    my $md5_fh = IO::File->new($md5_file, 'w')
+        or die "Failed to open $md5_file => $!";
+    $md5_fh->print($digester->hexdigest."\n");
+    $md5_fh->close;
+}
+print STDERR "Running MD5 on files...done\n";
 
 print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
