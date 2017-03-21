@@ -11,48 +11,46 @@ use List::Util;
 use YAML;
 
 use GSCApp;
-my %params;
-my @param_names = (qw/ biosample bioproject output_path sample_id submission_alias /);
-my @plate_barcodes;
-my $skip_md5;
+my $params = {
+    biosample => { doc => 'Biosample for the submission.', },
+    bioproject  => { doc => 'Bioproject for the submission.', },
+    output_path  => { doc => 'Directory for links, MD5s, and XMLs.', },
+    plate_barcodes => { doc => 'Barcode for LIMS containers.', },
+    sample  => { doc => 'The LIMS sample to filter on multi sample runs.', },
+    skip_md5 => { doc => 'Skip creating the MD5s', optional => 1, value => 0, },
+    submission_alias  => { doc => 'An alias for the submission.', },
+};
 App::Getopt->command_line_options(
     (map {
         my $n = $_;
         $n =~ s/_/-/g;
         sprintf('%s=s', $n) => {
-            action => \$params{$_},
-            message => "The $_ for submssion",
+            action => \$params->{$_}->{value},
+            message => $params->{$_}->{doc},
         },
-    } @param_names),
-	"plate-barcodes=s" => {
-        action => \@plate_barcodes,
-        message => 'Plate barcodes from LIMS',
-    },
-    "skip-md5" => {
-        action => \$skip_md5,
-        message => 'Skip creating the MD5s',
-    },
+    } keys %$params),
 );
 App->init;
 
 my @errors;
-for my $param_name ( @param_names ) {
-    push @errors, "No $param_name given!" if not $params{$param_name};
+for my $param_name ( keys %$params ) {
+    next if exists $params->{$param_name}->{optional} and $params->{$param_name}->{optional};
+    push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
 }
-push @errors, 'No plate barcodes given!' if not @plate_barcodes;
 die join("\n", @errors) if @errors;
-print STDERR "Params: \n".YAML::Dump(\%params);
+print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
 
+my @plate_barcodes = split(/[,\s+]/, $params->{plate_barcodes}->{value});
 my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
 die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes)) if not @pacbio_runs;
 die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
 printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
 
-my $sample = GSC::Organism::Sample->get($params{sample_id});
-die sprintf('No sample for %s', $params{sample_id}) if not $sample;
+my $sample = GSC::Organism::Sample->get($params->{sample}->{value});
+die sprintf('No sample for %s', $params->{sample}->{value}) if not $sample;
 
-File::Path::make_path($params{output_path}) if not -d $params{output_path};
-die sprintf('Output path does not exist! %s', $params{output_path}) if not -d $params{output_path};
+File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
+die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) if not -d $params->{output_path}->{value};
 
 print STDERR "Gathering run files...\n";
 my @files;
@@ -67,7 +65,7 @@ printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
 print STDERR "Linking files...\n";
 for my $file ( @files ) {
-    my $link = File::Spec->join($params{output_path}, File::Basename::basename($file));
+    my $link = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file));
     symlink($file, $link)
         or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
 }
@@ -80,7 +78,7 @@ for my $file ( @files ) {
         or die "Failed to open $file => $!";
     $fh->binmode;
     $digester->addfile($fh);
-    my $md5_file = File::Spec->join($params{output_path}, File::Basename::basename($file).'.md5');
+    my $md5_file = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file).'.md5');
     my $md5_fh = IO::File->new($md5_file, 'w')
         or die "Failed to open $md5_file => $!";
     $md5_fh->print($digester->hexdigest."\n");
@@ -92,12 +90,12 @@ print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
     barcodes => \@plate_barcodes,
     organism_sample => $sample,
-    bioproject_id => $params{bioproject},
-    biosample_id => $params{biosample},
-    submission_alias => $params{submission_alias},
-    write_tar_file_to_dir => $params{output_path},
+    bioproject_id => $params->{bioproject}->{value}->{value},
+    biosample_id => $params->{biosample}->{value},
+    submission_alias => $params->{submission_alias}->{value},
+    write_tar_file_to_dir => $params->{output_path}->{value},
     );
 die 'Failed to create submission XML!' if not $rv;
-die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params{output_path}, "$params{submission_alias}.tar");
+die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
 print STDERR "Rendering submission XML...done\n";
 exit 0;
