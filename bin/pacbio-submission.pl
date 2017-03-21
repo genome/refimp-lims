@@ -46,7 +46,11 @@ die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes))
 die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
 printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
 
-my $sample = GSC::Organism::Sample->get($params->{sample}->{value});
+my $sample = GSC::Organism::Sample->get(
+    $params->{sample}->{value} =~ /^\d+$/
+    ? ( id => $params->{sample}->{value} )
+    : ( full_name => $params->{sample}->{value} )
+);
 die sprintf('No sample for %s', $params->{sample}->{value}) if not $sample;
 
 File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
