@@ -17,15 +17,16 @@ my $params = {
     output_path  => { doc => 'Directory for links, MD5s, and XMLs.', },
     plate_barcodes => { doc => 'Barcode for LIMS containers.', },
     sample  => { doc => 'The LIMS sample to filter on multi sample runs.', },
-    skip_md5 => { doc => 'Skip creating the MD5s', optional => 1, value => 0, },
+    skip_md5 => { doc => 'Skip creating the MD5s', type => '!', value => 0, },
     submission_alias  => { doc => 'An alias for the submission.', },
 };
 App::Getopt->command_line_options(
     (map {
         my $n = $_;
         $n =~ s/_/-/g;
-        sprintf('%s=s', $n) => {
+        $n => {
             action => \$params->{$_}->{value},
+            argument => ( $params->{$_}->{type} ? $params->{$_}->{type} : '=s' ),
             message => $params->{$_}->{doc},
         },
     } keys %$params),
@@ -34,7 +35,7 @@ App->init;
 
 my @errors;
 for my $param_name ( keys %$params ) {
-    next if exists $params->{$param_name}->{optional} and $params->{$param_name}->{optional};
+    next if exists $params->{$param_name}->{type} and $params->{$param_name}->{type} eq '!';
     push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
 }
 die join("\n", @errors) if @errors;
