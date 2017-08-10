@@ -8,9 +8,14 @@ use Set::Scalar;
 use YAML;
 
 use GSCApp;
-App->init;
 
 die "No run barcodes given!" if not @ARGV;
+if ( List::MoreUtils::any { $_ =~ /^\-\-?h/ } @ARGV ) {
+    print "Usage: pacbio-run.pl BARCODE [BARCODE2, ...]\nShow libraries and whether analysis files are associated to pac bio runs.\n";
+    exit;
+}
+
+App->init;
 
 my $barcodes = Set::Scalar->new(@ARGV);
 my $found_barcodes = Set::Scalar->new;
