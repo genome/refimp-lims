@@ -33,6 +33,7 @@ App::Getopt->command_line_options(
 );
 App->init;
 
+print STDERR "Pac Bio Submission...\n";
 my @errors;
 for my $param_name ( keys %$params ) {
     next if exists $params->{$param_name}->{type} and $params->{$param_name}->{type} eq '!';
@@ -60,11 +61,15 @@ die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) i
 print STDERR "Gathering run files...\n";
 my @files;
 for my $pacbio_run ( @pacbio_runs ) {
+    my @run_files;
     for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
         die "File does not exist! $file" if not -s $file;
-        push @files, $file;
+        push @run_files, $file;
     }
+    printf(STDERR "Pac Bio run has no primary analysis files!\n", $pacbio_run->plate_barcode) if not @run_files;
+    push @files, @run_files;
 }
+die "No primary analysis files found for any pac bio runs!" if not @files;
 my $max = List::Util::max( map { -s $_ } @files);
 printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
