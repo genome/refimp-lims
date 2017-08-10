@@ -95,7 +95,7 @@ print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
     barcodes => \@plate_barcodes,
     organism_sample => $sample,
-    bioproject_id => $params->{bioproject}->{value}->{value},
+    bioproject_id => $params->{bioproject}->{value},
     biosample_id => $params->{biosample}->{value},
     submission_alias => $params->{submission_alias}->{value},
     write_tar_file_to_dir => $params->{output_path}->{value},
