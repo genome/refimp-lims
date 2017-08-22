@@ -81,21 +81,7 @@ for my $file ( @files ) {
 }
 print STDERR "Linking files...done\n";
 
-print STDERR "Generating MD5s...\n";
-my $digester = Digest::MD5->new;
-for my $file ( @files ) {
-    my $fh = IO::File->new($file)
-        or die "Failed to open $file => $!";
-    $fh->binmode;
-    $digester->addfile($fh);
-    my $md5_file = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file).'.md5');
-    my $md5_fh = IO::File->new($md5_file, 'w')
-        or die "Failed to open $md5_file => $!";
-    $md5_fh->print($digester->hexdigest."\n");
-    $md5_fh->close;
-}
-print STDERR "Running MD5 on files...done\n";
-
+generate_md5s();
 print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
     barcodes => \@plate_barcodes,
@@ -107,5 +93,29 @@ my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
     );
 die 'Failed to create submission XML!' if not $rv;
 die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
+
 print STDERR "Rendering submission XML...done\n";
-exit 0;
+
+sub generate_md5s {
+
+    if ( !$params->{skip_md5} ) {
+        print STDERR "Skipping MD5s...\n";
+        return;
+    }
+
+    print STDERR "Generating MD5s...\n";
+    my $digester = Digest::MD5->new;
+    for my $file ( @files ) {
+        my $fh = IO::File->new($file)
+            or die "Failed to open $file => $!";
+        $fh->binmode;
+        $digester->addfile($fh);
+        my $md5_file = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file).'.md5');
+        my $md5_fh = IO::File->new($md5_file, 'w')
+            or die "Failed to open $md5_file => $!";
+        $md5_fh->print($digester->hexdigest."\n");
+        $md5_fh->close;
+    }
+
+    print STDERR "Generate MD5s...done\n";
+}
