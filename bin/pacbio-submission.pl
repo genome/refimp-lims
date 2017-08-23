@@ -37,14 +37,7 @@ validate_params();
 my $sample = get_organism_sample($params->{sample}->{value});
 my @pacbio_runs = get_pacbio_runs();
 my @files = get_analysis_files_from_runs(@pacbio_runs);
-
-print STDERR "Linking files...\n";
-for my $file ( @files ) {
-    my $link = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file));
-    symlink($file, $link)
-        or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
-}
-print STDERR "Linking files...done\n";
+link_analysis_files_to_output_path(\@files, $params->{output_path}->{value});
 
 generate_md5s();
 print STDERR "Rendering submission XML...\n";
@@ -115,6 +108,19 @@ sub get_analysis_files_from_runs {
     printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
     @files;
+}
+
+sub link_analysis_files_to_output_path {
+    my ($files, $output_path) = @_;
+    print STDERR "Linking files...\n";
+
+    for my $file ( @$files ) {
+        my $link = File::Spec->join($output_path, File::Basename::basename($file));
+        symlink($file, $link)
+            or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
+    }
+
+    print STDERR "Linking files...done\n";
 }
 
 sub generate_md5s {
