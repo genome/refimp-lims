@@ -11,7 +11,7 @@ use List::Util;
 use YAML;
 
 use GSCApp;
-my $params = {
+my $clo = { # command line options
     biosample => { doc => 'Biosample for the submission.', },
     bioproject  => { doc => 'Bioproject for the submission.', },
     output_path  => { doc => 'Directory for links, MD5s, and XMLs.', },
@@ -20,33 +20,36 @@ my $params = {
     skip_md5 => { doc => 'Skip creating the MD5s', type => '!', value => 0, },
     submission_alias  => { doc => 'An alias for the submission.', },
 };
+my %params = map { $_ => $clo->{$_}->{value} || undef } keys %$clo;
 App::Getopt->command_line_options(
     (map {
         my $n = $_;
         $n =~ s/_/-/g;
         $n => {
-            action => \$params->{$_}->{value},
-            argument => ( $params->{$_}->{type} ? $params->{$_}->{type} : '=s' ),
-            message => $params->{$_}->{doc},
+            action => \$params{$_},
+            argument => ( $clo->{$_}->{type} ? $clo->{$_}->{type} : '=s' ),
+            message => $clo->{$_}->{doc},
         },
-    } keys %$params),
+    } keys %$clo),
 );
 App->init;
 
-validate_params();
-my $sample = get_organism_sample($params->{sample}->{value});
-my @pacbio_runs = get_pacbio_runs();
+validate_params(\%params);
+$params{sample} = get_organism_sample($params{sample});
+my @pacbio_runs = get_pacbio_runs($params{plate_barcodes});
 my @files = get_analysis_files_from_runs(@pacbio_runs);
-link_analysis_files_to_output_path(\@files, $params->{output_path}->{value});
-generate_md5s();
-render_xml($params);
+link_analysis_files_to_output_path(\@files, $params{output_path});
+generate_md5s($params{output_path}) if !$params{skip_md5};
+render_xml(\%params);
 
 sub validate_params {
+    my $params = shift;
     print STDERR "Pac Bio Submission...\n";
+
     my @errors;
     for my $param_name ( keys %$params ) {
-        next if exists $params->{$param_name}->{type} and $params->{$param_name}->{type} eq '!';
-        push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
+        next if not defined $params->{$param_name};
+        push @errors, "No $param_name given!" if not $params->{$param_name};
     }
     die join("\n", @errors) if @errors;
 
@@ -57,8 +60,8 @@ sub validate_params {
 }
 
 sub get_pacbio_runs {
-    my $platge_barcodes_string = shift;
-    my @plate_barcodes = split(/[,\s+]/, $params->{plate_barcodes}->{value});
+    my $plate_barcodes_string = shift;
+    my @plate_barcodes = split(/[,\s+]/, $plate_barcodes_string);
     my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
     die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes)) if not @pacbio_runs;
     die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
@@ -111,20 +114,16 @@ sub link_analysis_files_to_output_path {
 }
 
 sub generate_md5s {
-
-    if ( !$params->{skip_md5} ) {
-        print STDERR "Skipping MD5s...\n";
-        return;
-    }
-
+    my $output_path = shift;
     print STDERR "Generating MD5s...\n";
+
     my $digester = Digest::MD5->new;
     for my $file ( @files ) {
         my $fh = IO::File->new($file)
             or die "Failed to open $file => $!";
         $fh->binmode;
         $digester->addfile($fh);
-        my $md5_file = File::Spec->join($params->{output_path}->{value}, File::Basename::basename($file).'.md5');
+        my $md5_file = File::Spec->join($output_path, File::Basename::basename($file).'.md5');
         my $md5_fh = IO::File->new($md5_file, 'w')
             or die "Failed to open $md5_file => $!";
         $md5_fh->print($digester->hexdigest."\n");
