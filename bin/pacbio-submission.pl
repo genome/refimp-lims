@@ -38,21 +38,8 @@ my $sample = get_organism_sample($params->{sample}->{value});
 my @pacbio_runs = get_pacbio_runs();
 my @files = get_analysis_files_from_runs(@pacbio_runs);
 link_analysis_files_to_output_path(\@files, $params->{output_path}->{value});
-
 generate_md5s();
-print STDERR "Rendering submission XML...\n";
-my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
-    barcodes => [ map { $_->plate_barcode } @pacbio_runs ],
-    organism_sample => $sample,
-    bioproject_id => $params->{bioproject}->{value},
-    biosample_id => $params->{biosample}->{value},
-    submission_alias => $params->{submission_alias}->{value},
-    write_tar_file_to_dir => $params->{output_path}->{value},
-    );
-die 'Failed to create submission XML!' if not $rv;
-die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
-
-print STDERR "Rendering submission XML...done\n";
+render_xml($params);
 
 sub validate_params {
     print STDERR "Pac Bio Submission...\n";
@@ -145,4 +132,22 @@ sub generate_md5s {
     }
 
     print STDERR "Generate MD5s...done\n";
+}
+
+sub render_xml {
+    my $params = shift;
+    print STDERR "Rendering submission XML...\n";
+
+    my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
+        barcodes => [ map { $_->plate_barcode } @pacbio_runs ],
+        organism_sample => $sample,
+        bioproject_id => $params->{bioproject}->{value},
+        biosample_id => $params->{biosample}->{value},
+        submission_alias => $params->{submission_alias}->{value},
+        write_tar_file_to_dir => $params->{output_path}->{value},
+    );
+    die 'Failed to create submission XML!' if not $rv;
+    die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
+
+    print STDERR "Rendering submission XML...done\n";
 }
