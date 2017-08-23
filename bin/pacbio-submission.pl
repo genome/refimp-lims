@@ -34,23 +34,9 @@ App::Getopt->command_line_options(
 App->init;
 
 validate_params();
-my @pacbio_runs = get_pacbio_runs();
 my $sample = get_organism_sample($params->{sample}->{value});
-
-print STDERR "Gathering run files...\n";
-my @files;
-for my $pacbio_run ( @pacbio_runs ) {
-    my @run_files;
-    for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
-        die "File does not exist! $file" if not -s $file;
-        push @run_files, $file;
-    }
-    printf(STDERR "Pac Bio run has no primary analysis files!\n", $pacbio_run->plate_barcode) if not @run_files;
-    push @files, @run_files;
-}
-die "No primary analysis files found for any pac bio runs!" if not @files;
-my $max = List::Util::max( map { -s $_ } @files);
-printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
+my @pacbio_runs = get_pacbio_runs();
+my @files = get_analysis_files_from_runs(@pacbio_runs);
 
 print STDERR "Linking files...\n";
 for my $file ( @files ) {
@@ -109,6 +95,26 @@ sub get_organism_sample {
     );
     die sprintf('No sample for %s', $sample_param) if not $sample;
     $sample;
+}
+
+sub get_analysis_files_from_runs {
+    print STDERR "Gathering run files...\n";
+
+    for my $pacbio_run ( @_ ) {
+        my @run_files;
+        for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
+            die "File does not exist! $file" if not -s $file;
+            push @run_files, $file;
+        }
+        printf(STDERR "Pac Bio run has no primary analysis files!\n", $pacbio_run->plate_barcode) if not @run_files;
+        push @files, @run_files;
+    }
+    die "No primary analysis files found for any pac bio runs!" if not @files;
+
+    my $max = List::Util::max( map { -s $_ } @files);
+    printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
+
+    @files;
 }
 
 sub generate_md5s {
