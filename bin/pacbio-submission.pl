@@ -20,7 +20,7 @@ my $clo = { # command line options
     skip_md5 => { doc => 'Skip creating the MD5s', type => '!', value => 0, },
     submission_alias  => { doc => 'An alias for the submission.', },
 };
-my %params = map { $_ => $clo->{$_}->{value} || undef } keys %$clo;
+my %params = map { $_ => ( exists $clo->{$_}->{value} ? $clo->{$_}->{value} : undef ) } keys %$clo;
 App::Getopt->command_line_options(
     (map {
         my $n = $_;
@@ -35,11 +35,11 @@ App::Getopt->command_line_options(
 App->init;
 
 validate_params(\%params);
-$params{sample} = get_organism_sample($params{sample});
-my @pacbio_runs = get_pacbio_runs($params{plate_barcodes});
-my @files = get_analysis_files_from_runs(@pacbio_runs);
-link_analysis_files_to_output_path(\@files, $params{output_path});
-generate_md5s($params{output_path}) if !$params{skip_md5};
+get_organism_sample(\%params);
+get_pacbio_runs(\%params);
+get_analysis_files_from_runs(\%params);
+link_analysis_files_to_output_path(\%params);
+generate_md5s(\%params) if !$params{skip_md5};
 render_xml(\%params);
 
 sub validate_params {
@@ -48,42 +48,49 @@ sub validate_params {
 
     my @errors;
     for my $param_name ( keys %$params ) {
-        next if not defined $params->{$param_name};
+        next if defined $params->{$param_name};
         push @errors, "No $param_name given!" if not $params->{$param_name};
     }
     die join("\n", @errors) if @errors;
 
-    File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
-    die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) if not -d $params->{output_path}->{value};
+    File::Path::make_path($params->{output_path}) if not -d $params->{output_path};
+    die sprintf('Output path does not exist! %s', $params->{output_path}) if not -d $params->{output_path};
 
-    print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
+    print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}) } sort keys %$params)."\n";
 }
 
 sub get_pacbio_runs {
-    my $plate_barcodes_string = shift;
+    my $params = shift;
+    print STDERR "Get Pac Bio runs...\n";
+
+    my $plate_barcodes_string = $params->{plate_barcodes};
     my @plate_barcodes = split(/[,\s+]/, $plate_barcodes_string);
     my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
     die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes)) if not @pacbio_runs;
     die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
     printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
-    @pacbio_runs;
+    $params->{pacbio_runs} = \@pacbio_runs;
 }
 
 sub get_organism_sample {
-    my $sample_param = shift;
+    my $params = shift;
+    my $sample_param = $params->{sample};
     my $sample = GSC::Organism::Sample->get(
         $sample_param =~ /^\d+$/
         ? ( id => $sample_param )
         : ( full_name => $sample_param )
     );
     die sprintf('No sample for %s', $sample_param) if not $sample;
-    $sample;
+    $params->{sample} = $sample;
 }
 
 sub get_analysis_files_from_runs {
+    my $params = shift;
     print STDERR "Gathering run files...\n";
+    die "No pac bio runs!" if not $params->{pacbio_runs};
 
-    for my $pacbio_run ( @_ ) {
+    my @files;
+    for my $pacbio_run ( @{$params->{pacbio_runs}} ) {
         my @run_files;
         for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
             die "File does not exist! $file" if not -s $file;
@@ -97,14 +104,16 @@ sub get_analysis_files_from_runs {
     my $max = List::Util::max( map { -s $_ } @files);
     printf STDERR ("Largest file [Kb]: %.0d\n", ($max/1024));
 
-    @files;
+    $params->{analysis_files} = \@files;
 }
 
 sub link_analysis_files_to_output_path {
-    my ($files, $output_path) = @_;
+    my $params = shift;
     print STDERR "Linking files...\n";
+    die "No analysis files!" if not $params->{analysis_files};
 
-    for my $file ( @$files ) {
+    my $output_path = $params->{output_path};
+    for my $file ( @{$params->{analysis_files}} ) {
         my $link = File::Spec->join($output_path, File::Basename::basename($file));
         symlink($file, $link)
             or die sprintf('ERROR: %s. Failed to link %s to %s.', ( $! || 'NA' ), $file, $link);
@@ -114,11 +123,13 @@ sub link_analysis_files_to_output_path {
 }
 
 sub generate_md5s {
-    my $output_path = shift;
+    my $params = shift;
     print STDERR "Generating MD5s...\n";
+    die "No analysis files!" if not $params->{analysis_files};
 
+    my $output_path = $params->{output_path};
     my $digester = Digest::MD5->new;
-    for my $file ( @files ) {
+    for my $file ( @{$params->{analysis_files}} ) {
         my $fh = IO::File->new($file)
             or die "Failed to open $file => $!";
         $fh->binmode;
@@ -138,15 +149,15 @@ sub render_xml {
     print STDERR "Rendering submission XML...\n";
 
     my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
-        barcodes => [ map { $_->plate_barcode } @pacbio_runs ],
-        organism_sample => $sample,
-        bioproject_id => $params->{bioproject}->{value},
-        biosample_id => $params->{biosample}->{value},
-        submission_alias => $params->{submission_alias}->{value},
-        write_tar_file_to_dir => $params->{output_path}->{value},
+        barcodes => [ map { $_->plate_barcode } @{$params->{pacbio_runs}} ],
+        organism_sample => $params->{sample},
+        bioproject_id => $params->{bioproject},
+        biosample_id => $params->{biosample},
+        submission_alias => $params->{submission_alias},
+        write_tar_file_to_dir => $params->{output_path},
     );
     die 'Failed to create submission XML!' if not $rv;
-    die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
+    die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}, $params->{submission_alias}.".tar");
 
     print STDERR "Rendering submission XML...done\n";
 }
