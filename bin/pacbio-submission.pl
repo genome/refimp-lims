@@ -41,12 +41,7 @@ die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes))
 die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
 printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
 
-my $sample = GSC::Organism::Sample->get(
-    $params->{sample}->{value} =~ /^\d+$/
-    ? ( id => $params->{sample}->{value} )
-    : ( full_name => $params->{sample}->{value} )
-);
-die sprintf('No sample for %s', $params->{sample}->{value}) if not $sample;
+my $sample = get_organism_sample($params->{sample}->{value});
 
 File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
 die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) if not -d $params->{output_path}->{value};
@@ -98,6 +93,17 @@ sub validate_params {
     }
     die join("\n", @errors) if @errors;
     print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
+}
+
+sub get_organism_sample {
+    my $sample_param = shift;
+    my $sample = GSC::Organism::Sample->get(
+        $sample_param =~ /^\d+$/
+        ? ( id => $sample_param )
+        : ( full_name => $sample_param )
+    );
+    die sprintf('No sample for %s', $sample_param) if not $sample;
+    $sample;
 }
 
 sub generate_md5s {
