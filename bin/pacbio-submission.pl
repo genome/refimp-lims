@@ -34,13 +34,7 @@ App::Getopt->command_line_options(
 App->init;
 
 validate_params();
-
-my @plate_barcodes = split(/[,\s+]/, $params->{plate_barcodes}->{value});
-my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
-die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes)) if not @pacbio_runs;
-die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
-printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
-
+my @pacbio_runs = get_pacbio_runs();
 my $sample = get_organism_sample($params->{sample}->{value});
 
 File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
@@ -72,7 +66,7 @@ print STDERR "Linking files...done\n";
 generate_md5s();
 print STDERR "Rendering submission XML...\n";
 my $rv = GSC::Equipment::PacBio::Run->render_submission_xml(
-    barcodes => \@plate_barcodes,
+    barcodes => [ map { $_->plate_barcode } @pacbio_runs ],
     organism_sample => $sample,
     bioproject_id => $params->{bioproject}->{value},
     biosample_id => $params->{biosample}->{value},
@@ -93,6 +87,16 @@ sub validate_params {
     }
     die join("\n", @errors) if @errors;
     print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
+}
+
+sub get_pacbio_runs {
+    my $platge_barcodes_string = shift;
+    my @plate_barcodes = split(/[,\s+]/, $params->{plate_barcodes}->{value});
+    my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
+    die sprintf('No PacBio runs for plate barcodes! %s', join(' ', @plate_barcodes)) if not @pacbio_runs;
+    die sprintf('Did not find all PacBio runs for plate barcodes! %s', join("\n", map { YAML::Dump } @pacbio_runs)) if @pacbio_runs != @plate_barcodes;
+    printf STDERR "PacBio run ids: %s\n", join(' ', map { $_->id } @pacbio_runs);
+    @pacbio_runs;
 }
 
 sub get_organism_sample {
