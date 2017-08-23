@@ -15,7 +15,7 @@ my $params = {
     biosample => { doc => 'Biosample for the submission.', },
     bioproject  => { doc => 'Bioproject for the submission.', },
     output_path  => { doc => 'Directory for links, MD5s, and XMLs.', },
-    plate_barcodes => { doc => 'Barcode for LIMS containers.', },
+    plate_barcodes => { doc => 'Barcode for LIMS containers. Comma separated list.', },
     sample  => { doc => 'The LIMS sample to filter on multi sample runs.', },
     skip_md5 => { doc => 'Skip creating the MD5s', type => '!', value => 0, },
     submission_alias  => { doc => 'An alias for the submission.', },
@@ -33,14 +33,7 @@ App::Getopt->command_line_options(
 );
 App->init;
 
-print STDERR "Pac Bio Submission...\n";
-my @errors;
-for my $param_name ( keys %$params ) {
-    next if exists $params->{$param_name}->{type} and $params->{$param_name}->{type} eq '!';
-    push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
-}
-die join("\n", @errors) if @errors;
-print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
+validate_params();
 
 my @plate_barcodes = split(/[,\s+]/, $params->{plate_barcodes}->{value});
 my @pacbio_runs = GSC::Equipment::PacBio::Run->get(plate_barcode => \@plate_barcodes);
@@ -95,6 +88,17 @@ die 'Failed to create submission XML!' if not $rv;
 die 'Rendered submssion XML, but submission tar file does not exist!' if not -s File::Spec->join($params->{output_path}->{value}, $params->{submission_alias}->{value}.".tar");
 
 print STDERR "Rendering submission XML...done\n";
+
+sub validate_params {
+    print STDERR "Pac Bio Submission...\n";
+    my @errors;
+    for my $param_name ( keys %$params ) {
+        next if exists $params->{$param_name}->{type} and $params->{$param_name}->{type} eq '!';
+        push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
+    }
+    die join("\n", @errors) if @errors;
+    print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
+}
 
 sub generate_md5s {
 
