@@ -37,9 +37,6 @@ validate_params();
 my @pacbio_runs = get_pacbio_runs();
 my $sample = get_organism_sample($params->{sample}->{value});
 
-File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
-die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) if not -d $params->{output_path}->{value};
-
 print STDERR "Gathering run files...\n";
 my @files;
 for my $pacbio_run ( @pacbio_runs ) {
@@ -86,6 +83,10 @@ sub validate_params {
         push @errors, "No $param_name given!" if not $params->{$param_name}->{value};
     }
     die join("\n", @errors) if @errors;
+
+    File::Path::make_path($params->{output_path}->{value}) if not -d $params->{output_path}->{value};
+    die sprintf('Output path does not exist! %s', $params->{output_path}->{value}) if not -d $params->{output_path}->{value};
+
     print STDERR "Params: \n".join("\n", map { sprintf('%17s => %s', $_, $params->{$_}->{value}) } sort keys %$params)."\n";
 }
 
