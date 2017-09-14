@@ -90,13 +90,24 @@ sub get_analysis_files_from_runs {
     die "No pac bio runs!" if not $params->{pacbio_runs};
 
     my @files;
-    for my $pacbio_run ( @{$params->{pacbio_runs}} ) {
-        my @run_files;
-        for my $file ( $pacbio_run->get_primary_analysis_data_files ) {
-            die "File does not exist! $file" if not -s $file;
-            push @run_files, $file;
+    for my $run ( @{$params->{pacbio_runs}} ) {
+        my $libraries_and_primary_analyses = GSC::Equipment::PacBio::Run->get_library_to_primary_analysis_map(
+            barcodes => [ $run->plate_barcode ],
+            organism_sample => $params->{sample}->id,
+        );
+        if ( not $libraries_and_primary_analyses and not %$libraries_and_primary_analyses ) {
+            die sprintf("Did not find primary analysis for %s on run %s!", $params->{sample}->full_name, $run->plate_barcode);
         }
-        printf(STDERR "Pac Bio run has no primary analysis files!\n", $pacbio_run->plate_barcode) if not @run_files;
+        my @run_files;
+        for my $library_name ( keys %$libraries_and_primary_analyses ) {
+            for my $primary_analysis ( @{$libraries_and_primary_analyses->{$library_name}} ) {
+                for my $file ( map { $_->stringify } $primary_analysis->get_data_files ) {
+                    die "Primary analysis file does not exist! $file" if not -s $file;
+                    push @run_files, $file;
+                }
+            }
+        }
+        die sprintf("Run %s has no primary analysis files!\n", $run->plate_barcode) if not @run_files;
         push @files, @run_files;
     }
     die "No primary analysis files found for any pac bio runs!" if not @files;
