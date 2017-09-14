@@ -3,7 +3,6 @@
 use strict;
 use warnings;
 
-use Digest::MD5;
 use File::Basename;
 use File::Path;
 use File::Spec;
@@ -14,10 +13,9 @@ use GSCApp;
 my $clo = { # command line options
     biosample => { doc => 'Biosample for the submission.', },
     bioproject  => { doc => 'Bioproject for the submission.', },
-    output_path  => { doc => 'Directory for links, MD5s, and XMLs.', },
+    output_path  => { doc => 'Directory for run file links and XMLs.', },
     plate_barcodes => { doc => 'Barcode for LIMS containers. Comma separated list.', },
     sample  => { doc => 'The LIMS sample to filter on multi sample runs.', },
-    skip_md5 => { doc => 'Skip creating the MD5s', type => '!', value => 0, },
     submission_alias  => { doc => 'An alias for the submission.', },
 };
 my %params = map { $_ => ( exists $clo->{$_}->{value} ? $clo->{$_}->{value} : undef ) } keys %$clo;
@@ -39,7 +37,6 @@ get_organism_sample(\%params);
 get_pacbio_runs(\%params);
 get_analysis_files_from_runs(\%params);
 link_analysis_files_to_output_path(\%params);
-generate_md5s(\%params) if !$params{skip_md5};
 render_xml(\%params);
 
 sub validate_params {
@@ -131,28 +128,6 @@ sub link_analysis_files_to_output_path {
     }
 
     print STDERR "Linking files...done\n";
-}
-
-sub generate_md5s {
-    my $params = shift;
-    print STDERR "Generating MD5s...\n";
-    die "No analysis files!" if not $params->{analysis_files};
-
-    my $output_path = $params->{output_path};
-    my $digester = Digest::MD5->new;
-    for my $file ( @{$params->{analysis_files}} ) {
-        my $fh = IO::File->new($file)
-            or die "Failed to open $file => $!";
-        $fh->binmode;
-        $digester->addfile($fh);
-        my $md5_file = File::Spec->join($output_path, File::Basename::basename($file).'.md5');
-        my $md5_fh = IO::File->new($md5_file, 'w')
-            or die "Failed to open $md5_file => $!";
-        $md5_fh->print($digester->hexdigest."\n");
-        $md5_fh->close;
-    }
-
-    print STDERR "Generate MD5s...done\n";
 }
 
 sub render_xml {
