@@ -14,11 +14,11 @@ sub samples_and_analysis_files {
     die "No container for plate barcode $barcode" if not $container;
     my $content = $container->content;
     die "No content for container with barcode $barcode" if not $content;
-    my $collection = $run->get_collection;
-    die sprintf('No collection for run with barcode %s', $barcode) if not $collection;
+    my @collection = $run->get_collection;
+    die sprintf('No collection for run with barcode %s', $barcode) if not @collection;
 
     my %samples_and_analysis_files;
-    for my $col ( sort { $a->well cmp $b->well } $collection ) {
+    for my $col ( sort { $a->well cmp $b->well } @collection ) {
         my $dl = GSC::DNALocation->get(
             location_name => lc($col->well),
             location_type => '96 well plate',
@@ -31,12 +31,17 @@ sub samples_and_analysis_files {
         my $primary_analysis = $col->get_primary_analysis;
         die sprintf("Run %s has no primary analysis", $run->plate_barcode) if not $primary_analysis;
 
-        my @analysis_files;
+        my (@analysis_files, @missing_files);
         for my $file ( map { $_->stringify } $primary_analysis->get_data_files ) {
-            die "Primary analysis file does not exist! $file" if not -s $file;
-            push @analysis_files, $file;
+            if ( ! -s $file ) {
+                push @missing_files, $file;
+            }
+            else {
+                push @analysis_files, $file;
+            }
         }
         push @{$samples_and_analysis_files{$sample->full_name}}, @analysis_files;
+        push @{'MISSING_'.$samples_and_analysis_files{$sample->full_name}}, @missing_files if @missing_files;
     }
 
     \%samples_and_analysis_files;

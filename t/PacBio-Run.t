@@ -3,13 +3,10 @@
 use strict;
 use warnings 'FATAL';
 
-use File::Temp;
 use PacBioTestEnv;
 use Path::Class;
-use Test::MockObject;
 use Test::Exception;
 use Test::More tests => 3;
-use Sub::Install;
 
 use lib file(__FILE__)->dir->parent->subdir('lib')->stringify;
 
@@ -37,8 +34,8 @@ subtest 'samples_and_analysis_files errors' => sub{
     throws_ok(sub{ $pkg->samples_and_analysis_files($run); }, qr/No content for container/, 'samples_and_analysis_files fails when no content');
     $run->{content} = $content;
 
-    my $collection = $run->{collection};
-    $run->{collection} = undef;
+    my $collection = delete $run->{collection};
+    $run->{collection} = [];
     throws_ok(sub{ $pkg->samples_and_analysis_files($run); }, qr/No collection for run/, 'samples_and_analysis_files fails when no run collection');
     $run->{collection} = $collection;
 
@@ -52,7 +49,7 @@ subtest 'samples_and_analysis_files' => sub{
     lives_ok(sub{ $saf = $pkg->samples_and_analysis_files($run); }, 'samples_and_analysis_files');
     ok($saf, 'got samples_and_analysis_files');
     my %expected_saf = (
-        $run->{library}->find_organism_sample->full_name => [ $run->{collection}->get_primary_analysis->get_data_files ],
+        $run->{library}->find_organism_sample->full_name => [ ($run->get_collection)[0]->get_primary_analysis->get_data_files ],
     );
     is_deeply($saf, \%expected_saf, 'expected samples_and_analysis_files');
 

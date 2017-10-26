@@ -45,12 +45,12 @@ sub setup_test_run {
     $test_run->{content} = \%content;
     $test_run->{container}->mock('content', sub{ $test_run->{content} });
 
-    $test_run->{collection} = Test::MockObject->new;
-    $test_run->{collection}->set_always('well', 1);
-    $test_run->mock('get_collection', sub{ $test_run->{collection} });
+    my $collection = Test::MockObject->new;
+    $collection->set_always('well', 1);
+    $test_run->{collection} = [ $collection ];
+    $test_run->mock('get_collection', sub{ @{$test_run->{collection}} });
 
     $test_run->{primary_analysis} = Test::MockObject->new;
-    my $tmpdir = dir( File::Temp::tempdir(CLEANUP => 1) );
     my $data_dir = $class->test_data_directory_for_class('PacBio::Run');
     my @files = ( map { $data_dir->file($_) } qw{
         m160610_215437_00116_c100976122550000001823226708101630_s1_p0.1.bax.h5
@@ -60,7 +60,7 @@ sub setup_test_run {
         m160610_215437_00116_c100976122550000001823226708101630_s1_p0.metadata.xml
     });
     $test_run->{primary_analysis}->mock('get_data_files', sub{ @files });
-    $test_run->{collection}->set_always('get_primary_analysis', $test_run->{primary_analysis});
+    $collection->set_always('get_primary_analysis', $test_run->{primary_analysis});
 
     $test_run->{dna_location} = Test::MockObject->new;
     $test_run->{dna_location}->set_always('dl_id', 1);
