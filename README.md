@@ -1,3 +1,3 @@
-# RefImp Scripts
+# RefImp LIMS
 
-Random scripts for the RefImp group!
+RefImp Scripts and Code that are Dependent on MGI LIMS Code and DB
