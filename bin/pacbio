@@ -10,7 +10,7 @@ use PacBio::Run::Submit;
 use GSCApp;
 
 my $usage = "Sub-commands for pacbio run:
-  list		show run info via barcodes
+  view		show run info via barcodes
   submit	gather runs and info, generate XML and send to SRA
 ";
 
