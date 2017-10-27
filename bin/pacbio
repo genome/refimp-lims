@@ -1,0 +1,41 @@
+#!/usr/bin/env lims-perl
+
+use strict;
+use warnings 'FATAL';
+
+use lib "../lib/";
+use PacBio::Run::View;
+use PacBio::Run::Submit;
+
+use GSCApp;
+
+my $usage = "Sub-commands for pacbio run:
+  list		show run info via barcodes
+  submit	gather runs and info, generate XML and send to SRA
+";
+
+my $cmd1 = shift @ARGV;
+my $cmd2 = shift @ARGV;
+my $cmd_class = join('::', 'PacBio', join('', map { ucfirst } split(/\-/, $cmd1)), join('', map { ucfirst } split(/\-/, $cmd2)));
+if ( ! $cmd1 or $cmd1 ne 'run' or not $cmd2 or not $cmd_class->can('help') ) {
+    print "Invalid subcommand for pacbio run! Here's the sub-commands we know:\n$usage";
+    exit 1;
+}
+
+my $clo = $cmd_class->command_line_options;
+my %params = map { $_ => ( exists $clo->{$_}->{value} ? $clo->{$_}->{value} : undef ) } keys %$clo;
+App::Getopt->command_line_options(
+    (map {
+        my $n = $_;
+        $n =~ s/_/-/g;
+        $n => {
+            action => \$params{$_},
+            argument => ( $clo->{$_}->{type} ? $clo->{$_}->{type} : '=s' ),
+            message => $clo->{$_}->{doc},
+        },
+    } keys %$clo),
+);
+App->init;
+my $cmd = $cmd_class->new(%params);
+$cmd->execute;
+exit;
