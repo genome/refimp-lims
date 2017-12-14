@@ -5,21 +5,44 @@ use warnings 'FATAL';
 
 use lib "../lib/";
 use lib "/usr/local/share/perl/5.10.1";
-use PacBio::Run::View;
+
 use PacBio::Run::Submit;
+use PacBio::Run::View;
+
+use List::MoreUtils 'any';
 
 use GSCApp;
 
-my $usage = "Sub-commands for pacbio run:
+my $pacbio_usage = "Valid 'pacbio' sub-commands:\n  run";
+my $run_usage = "Valid 'pacbio run' sub-commands:
   view		show run info via barcodes
-  submit	gather runs and info, generate XML and send to SRA
-";
+  submit	gather runs and info, generate XML and send to SRA";
+my $help_regexp = qr/^\-{1,2}h(elp)?$/;
 
 my $cmd1 = shift @ARGV;
 my $cmd2 = shift @ARGV;
+
+if ( ! $cmd1 or $cmd1 =~ $help_regexp ) {
+	print "$pacbio_usage\n";
+	exit 0;
+}
+if ( $cmd1 ne 'run' ) {
+	print "Invalid sub-command for pacbio: $cmd1\n$run_usage\n";
+	exit 1;
+}
+
+if ( ! $cmd2 or $cmd2 =~ $help_regexp ) {
+	print "$run_usage\n";
+	exit 0;
+}
+if ( ! any { $cmd2 eq $_ } (qw/ submit view /)) {
+	print "Invalid sub-command for pacbio run: $cmd2\n$run_usage\n";
+	exit 1;
+}
+
 my $cmd_class = join('::', 'PacBio', join('', map { ucfirst } split(/\-/, $cmd1)), join('', map { ucfirst } split(/\-/, $cmd2)));
-if ( ! $cmd1 or $cmd1 ne 'run' or not $cmd2 or not $cmd_class->can('help') ) {
-    print "Invalid subcommand for pacbio run! Here's the sub-commands we know:\n$usage";
+if ( ! $cmd_class->can('help') ) {
+    print "Invalid sub-command for pacbio run: $cmd2\n$run_usage";
     exit 1;
 }
 
