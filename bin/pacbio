@@ -7,6 +7,7 @@ use lib "../lib/";
 use lib "/usr/local/share/perl/5.10.1";
 
 use PacBio::Run::Submit;
+use PacBio::Run::Verify;
 use PacBio::Run::View;
 
 use List::MoreUtils 'any';
@@ -15,8 +16,9 @@ use GSCApp;
 
 my $pacbio_usage = "Valid 'pacbio' sub-commands:\n  run";
 my $run_usage = "Valid 'pacbio run' sub-commands:
-  view		show run info via barcodes
-  submit	gather runs and info, generate XML and send to SRA";
+  submit	gather runs and info, generate XML and send to SRA
+  verify	verify barcode samples and analysis files
+  view		show run info via barcodes";
 my $help_regexp = qr/^\-{1,2}h(elp)?$/;
 
 my $cmd1 = shift @ARGV;
@@ -35,15 +37,15 @@ if ( ! $cmd2 or $cmd2 =~ $help_regexp ) {
 	print "$run_usage\n";
 	exit 0;
 }
-if ( ! any { $cmd2 eq $_ } (qw/ submit view /)) {
+if ( ! any { $cmd2 eq $_ } (qw/ submit verify view /)) {
 	print "Invalid sub-command for pacbio run: $cmd2\n$run_usage\n";
 	exit 1;
 }
 
 my $cmd_class = join('::', 'PacBio', join('', map { ucfirst } split(/\-/, $cmd1)), join('', map { ucfirst } split(/\-/, $cmd2)));
 if ( ! $cmd_class->can('help') ) {
-    print "Invalid sub-command for pacbio run: $cmd2\n$run_usage";
-    exit 1;
+	print "Invalid sub-command for pacbio run: $cmd2\n$run_usage";
+	exit 1;
 }
 
 my $clo = $cmd_class->command_line_options;
