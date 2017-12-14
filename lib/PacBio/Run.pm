@@ -40,8 +40,8 @@ sub samples_and_analysis_files {
                 push @analysis_files, $file;
             }
         }
-        push @{$samples_and_analysis_files{$sample->full_name}}, @analysis_files;
-        push @{'MISSING_'.$samples_and_analysis_files{$sample->full_name}}, @missing_files if @missing_files;
+        push @{$samples_and_analysis_files{$sample->full_name}->{analysis_files}}, @analysis_files if @analysis_files;
+        push @{$samples_and_analysis_files{$sample->full_name}->{missing_files}}, @missing_files if @missing_files;
     }
 
     \%samples_and_analysis_files;
