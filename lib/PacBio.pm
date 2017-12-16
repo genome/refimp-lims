@@ -11,39 +11,45 @@ use List::MoreUtils 'any';
 
 use GSCApp;
 
+sub pacbio_usage { "Valid 'pacbio' sub-commands:\n  run"; }
+sub run_sub_commands { (qw/ submit verify view /) }
+sub run_usage {
+    my $usage = "Valid 'pacbio run' sub-commands:\n";
+    for my $sub_command ( run_sub_commands() ) {
+        my $cmd_class = join('::', 'PacBio', 'Run', join('', map { ucfirst } split(/\-/, $sub_command)));
+        $usage .= sprintf("%s\t%s", $sub_command, $cmd_class->help);
+    }
+    $usage;
+}
+
 sub run {
-    my $pacbio_usage = "Valid 'pacbio' sub-commands:\n  run";
-    my $run_usage = "Valid 'pacbio run' sub-commands:
-    submit	gather runs and info, generate XML and send to SRA
-    verify	verify barcode samples and analysis files
-    view		show run info via barcodes";
     my $help_regexp = qr/^\-{1,2}h(elp)?$/;
 
     my $cmd1 = shift @ARGV;
     my $cmd2 = shift @ARGV;
 
     if ( ! $cmd1 or $cmd1 =~ $help_regexp ) {
-        print "$pacbio_usage\n";
-        exit 0;
+        print pacbio_usage();
+        return 0;
     }
     if ( $cmd1 ne 'run' ) {
-        print "Invalid sub-command for pacbio: $cmd1\n$run_usage\n";
-        exit 1;
+        print "Invalid sub-command for pacbio: $cmd1\n".run_usage()."\n";
+        return 1;
     }
 
     if ( ! $cmd2 or $cmd2 =~ $help_regexp ) {
-        print "$run_usage\n";
-	    exit 0;
+        print run_usage();
+        return 0;
     }
     if ( ! any { $cmd2 eq $_ } (qw/ submit verify view /)) {
-	    print "Invalid sub-command for pacbio run: $cmd2\n$run_usage\n";
-	    exit 1;
+	    print "Invalid sub-command for pacbio run: $cmd2\n".run_usage()."\n";
+	    return 1;
     }
 
     my $cmd_class = join('::', 'PacBio', join('', map { ucfirst } split(/\-/, $cmd1)), join('', map { ucfirst } split(/\-/, $cmd2)));
     if ( ! $cmd_class->can('help') ) {
-	    print "Invalid sub-command for pacbio run: $cmd2\n$run_usage";
-	    exit 1;
+	    print "Invalid sub-command for pacbio run: $cmd2\n".run_usage();
+	    return 1;
     }
 
     my $clo = $cmd_class->command_line_options;
