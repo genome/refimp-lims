@@ -3,7 +3,7 @@ package PacBio::Run::View;
 use strict;
 use warnings 'FATAL';
 
-sub help { return 'pacbio run view --barcode $BARCODE' }
+sub help { return 'show details for a run' }
 sub command_line_options {
     {
         barcode => { doc => 'Barcode for LIMS containers.', },

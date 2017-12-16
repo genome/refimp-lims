@@ -5,7 +5,7 @@ use warnings 'FATAL';
 
 use Set::Scalar;
 
-sub help { 'pacbio run verify --barcodes $BARCODE' }
+sub help { 'check run barcode samples and analysis files' }
 sub command_line_options {
     {
         barcodes => { doc => 'Barcodes for LIMS containers to verify. Comma separated list.', },
@@ -56,7 +56,7 @@ sub execute {
             status => ( @errors ? 'ERROR' : 'OK' ),
         );
         $report{errors} = \@errors if @errors;
-        $report{info} = $samples{$sample} if $self->detail;
+        $report{info} = $samples{$sample} if $self->{detail};
         $output{$sample} = \%report;
     }
 

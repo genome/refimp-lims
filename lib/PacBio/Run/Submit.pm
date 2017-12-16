@@ -9,7 +9,7 @@ use File::Spec;
 use List::Util;
 use YAML;
 
-sub help { return 'pacbio run submit --barcode $BARCODE' }
+sub help { return 'gather run files and generate XMLs for submission' }
 sub command_line_options {
     {
         biosample => { doc => 'Biosample for the submission.', },

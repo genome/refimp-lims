@@ -17,7 +17,7 @@ sub run_usage {
     my $usage = "Valid 'pacbio run' sub-commands:\n";
     for my $sub_command ( run_sub_commands() ) {
         my $cmd_class = join('::', 'PacBio', 'Run', join('', map { ucfirst } split(/\-/, $sub_command)));
-        $usage .= sprintf("%s\t%s", $sub_command, $cmd_class->help);
+        $usage .= sprintf("%s\t%s\n", $sub_command, $cmd_class->help);
     }
     $usage;
 }
