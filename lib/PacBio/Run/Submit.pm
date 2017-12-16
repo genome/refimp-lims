@@ -10,7 +10,7 @@ use List::Util;
 use YAML;
 
 sub help { return 'gather run files and generate XMLs for submission' }
-sub command_line_options {
+sub properties {
     {
         biosample => { doc => 'Biosample for the submission.', },
         bioproject  => { doc => 'Bioproject for the submission.', },
@@ -34,7 +34,7 @@ sub execute {
     $self->get_pacbio_runs;
     $self->get_analysis_files_from_runs;
     $self->link_analysis_files_to_output_path;
-    #$self->render_xml;
+    $self->render_xml;
     print STDERR "Pac Bio Submission...Done\n";
 }
 

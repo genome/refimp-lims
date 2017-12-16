@@ -4,10 +4,9 @@ use strict;
 use warnings 'FATAL';
 
 sub help { return 'show details for a run' }
-sub command_line_options {
+sub properties {
     {
         barcode => { doc => 'Barcode for LIMS containers.', },
-        #sample => { doc => 'Sampe ID or name to restrict finding of analysis files.', },
     },
 }
 

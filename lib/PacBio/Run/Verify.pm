@@ -6,7 +6,7 @@ use warnings 'FATAL';
 use Set::Scalar;
 
 sub help { 'check run barcode samples and analysis files' }
-sub command_line_options {
+sub properties {
     {
         barcodes => { doc => 'Barcodes for LIMS containers to verify. Comma separated list.', },
         detail => { doc => 'Show sample barcodes and  analysis files', },

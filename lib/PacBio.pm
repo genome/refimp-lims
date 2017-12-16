@@ -52,23 +52,32 @@ sub run {
 	    return 1;
     }
 
-    my $clo = $cmd_class->command_line_options;
-    my %params = map { $_ => ( exists $clo->{$_}->{value} ? $clo->{$_}->{value} : undef ) } keys %$clo;
-    App::Getopt->command_line_options(
-        (map {
+    my ($clo, $params) = clo_and_params_for_class($cmd_class);
+    App::Getopt->command_line_options(%$clo);
+    App->init;
+    my $cmd = $cmd_class->new(%$params);
+    $cmd->execute;
+    0;
+}
+
+sub clo_and_params_for_class {
+    my $cmd_class = shift;
+
+    my $properties = $cmd_class->properties;
+    my %params = map { $_ => ( exists $properties->{$_}->{value} ? $properties->{$_}->{value} : undef ) } keys %$properties;
+    my %clo = (
+        map {
             my $n = $_;
             $n =~ s/_/-/g;
             $n => {
                 action => \$params{$_},
-                argument => ( $clo->{$_}->{type} ? $clo->{$_}->{type} : '=s' ),
-                message => $clo->{$_}->{doc},
+                argument => ( $properties->{$_}->{type} ? $properties->{$_}->{type} : '=s' ),
+                message => $properties->{$_}->{doc},
             },
-        } keys %$clo),
+        } keys %$properties
     );
-    App->init;
-    my $cmd = $cmd_class->new(%params);
-    $cmd->execute;
-    0;
+
+    (\%clo, \%params);
 }
 
 1;
