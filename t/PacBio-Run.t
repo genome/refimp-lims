@@ -49,7 +49,7 @@ subtest 'samples_and_analysis_files' => sub{
     lives_ok(sub{ $saf = $pkg->samples_and_analysis_files($run); }, 'samples_and_analysis_files');
     ok($saf, 'got samples_and_analysis_files');
     my %expected_saf = (
-        $run->{library}->find_organism_sample->full_name => [ ($run->get_collection)[0]->get_primary_analysis->get_data_files ],
+        $run->{library}->find_organism_sample->full_name => { analysis_files => [ ($run->get_collection)[0]->get_primary_analysis->get_data_files ] },
     );
     is_deeply($saf, \%expected_saf, 'expected samples_and_analysis_files');
 
