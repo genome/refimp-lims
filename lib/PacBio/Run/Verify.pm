@@ -3,7 +3,9 @@ package PacBio::Run::Verify;
 use strict;
 use warnings 'FATAL';
 
+use PacBio::Run;
 use Set::Scalar;
+use YAML;
 
 sub help { 'check run barcode samples and analysis files' }
 sub properties {
