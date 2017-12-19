@@ -3,6 +3,9 @@ package PacBio::Run::View;
 use strict;
 use warnings 'FATAL';
 
+use PacBio::Run;
+use YAML;
+
 sub help { return 'show details for a run' }
 sub properties {
     {

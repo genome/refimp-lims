@@ -28,6 +28,11 @@ sub setup_test_run {
     $test_run->set_always('id', '22');
     $test_run->{barcode} = 'A1B2C3';
     $test_run->mock('plate_barcode', sub{ $test_run->{barcode} });
+    Sub::Install::reinstall_sub({
+        code => sub{ $test_run },
+        as => 'get',
+        into => 'GSC::Equipment::PacBio::Run',
+        });
 
     my $sample = Test::MockObject->new;
     $sample->set_always('full_name', 'H_IJ-HG02818-HG02818_1');
